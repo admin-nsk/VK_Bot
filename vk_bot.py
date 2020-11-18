@@ -1,11 +1,15 @@
 from random import randint
 import vk_api
-from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 import logging
+
 try:
     import settings
 except:
-    exit("setting.py.defualt -> settings.py and set group_id and token")
+    exit("setting.py.default -> settings.py and set group_id and token")
+
+log = logging.getLogger('vk_bot_logger')
+
 
 def configure_logging():
     logging_format = logging.Formatter(
@@ -13,7 +17,6 @@ def configure_logging():
         datefmt="%d-%m-%Y %H:%M:%S"
     )
     logging_format_print = logging.Formatter(fmt="%(levelname)s: %(lineno)d: %(funcName)s - %(message)s")
-    log = logging.getLogger('vk_bot_logger')
 
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(logging_format_print)
@@ -26,8 +29,10 @@ def configure_logging():
     log.addHandler(file_handler)
     log.addHandler(stream_handler)
     log.setLevel(logging.DEBUG)
+    return log
 
-class vkBot:
+
+class VkBot:
     """
     Echo Bot for vk.com
     Use python 3.9
@@ -58,17 +63,18 @@ class vkBot:
         except Exception as exc:
             log.exception(exc)
 
-    def on_event(self, event: VkBotEventType):
+    def on_event(self, event):
         """
         Resend input massage
+        :event VkBotMessageEvent
         :param event: obj event
         :return: None
         """
-        if event.type is VkBotEventType.MESSAGE_NEW:
+        if event.type == VkBotEventType.MESSAGE_NEW:
             message = event.message.text
             log.debug("Новое сообщение")
             from_id = event.message.from_id
-            random_id = randint(1, 2**60)
+            random_id = randint(1, 2 ** 60)
             self.api.messages.send(user_id=from_id, random_id=random_id, message=message)
         else:
             log.warning(f'Мы пока не умеем обрабатывать события {event.type}')
@@ -76,5 +82,5 @@ class vkBot:
 
 if __name__ == '__main__':
     configure_logging()
-    bot = vkBot(settings.GROUP_ID, settings.TOKEN)
+    bot = VkBot(settings.GROUP_ID, settings.TOKEN)
     bot.run()
