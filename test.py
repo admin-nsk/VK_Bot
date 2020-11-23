@@ -5,6 +5,7 @@ from unittest.mock import patch, Mock, ANY
 from pony.orm import db_session, rollback
 from vk_api.bot_longpoll import VkBotMessageEvent
 import settings
+from generate_ticket import generate_ticket
 from vk_bot import VkBot
 
 
@@ -108,6 +109,13 @@ class TestBot(unittest.TestCase):
             args, kwargs = call
             real_outputs.append(kwargs['message'])
         assert real_outputs == self.EXPECTED_OUTPUTS
+
+    def test_generation_ticket(self):
+        ticket_file = generate_ticket("DWE", 'mail@mail.ru')
+
+        with open('image/ticket-example.png', 'rb') as expected_file:
+            expected_bytes = expected_file.read()
+        assert ticket_file.read() == expected_bytes
 
 
 if __name__ == '__main__':
