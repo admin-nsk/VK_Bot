@@ -1,4 +1,6 @@
 from random import randint
+
+import requests
 import vk_api
 from pony.orm import db_session
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
@@ -114,7 +116,13 @@ class VkBot:
         self.api.messages.send(user_id=user_id, random_id=randint(1, 2 ** 60), message=text_to_send)
 
     def send_image(self, image, user_id):
-        pass
+        upload_url = self.api.photos.getMessagesUploadServer()['upload_url']
+        upload_data = requests.post(url=upload_url, files={'photo': ('image.png', image, 'image/png')}).json()
+        image_data = self.api.photos.saveMessagesPhoto(**upload_data)
+        owner_id = image_data[0]['owner_id']
+        media_id = image_data[0]['id']
+        attachment = f'photo{owner_id}_{media_id}'
+        self.api.messages.send(user_id=user_id, random_id=randint(1, 2 ** 60), attachment=attachment)
 
     def send_step(self, step, user_id, text, context):
         if 'text' in step:

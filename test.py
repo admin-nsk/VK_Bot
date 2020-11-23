@@ -16,6 +16,7 @@ def isolate_db(test_func):
             rollback()
     return wrapper
 
+
 class TestBot(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -76,6 +77,7 @@ class TestBot(unittest.TestCase):
             with patch('vk_bot.VkBotLongPoll', return_value=long_poller_listen_mock):
                 bot = VkBot('', '')
                 bot.on_event = Mock()
+                bot.send_image = Mock()
                 bot.run()
 
                 bot.on_event.assert_called()
@@ -100,6 +102,7 @@ class TestBot(unittest.TestCase):
         with patch('vk_bot.VkBotLongPoll', return_value=long_poller_mock):
             bot = VkBot('', '')
             bot.api = api_mock
+            bot.send_image = Mock()
             bot.run()
 
         assert send_mock.call_count == len(self.INPUTS)
