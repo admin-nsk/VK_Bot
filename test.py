@@ -2,11 +2,18 @@ import unittest
 from copy import deepcopy
 from unittest.mock import patch, Mock, ANY
 
-import self as self
+from pony.orm import db_session, rollback
 from vk_api.bot_longpoll import VkBotMessageEvent
 import settings
 from vk_bot import VkBot
 
+
+def isolate_db(test_func):
+    def wrapper(*args, **kwargs):
+        with db_session as session:
+            test_func(*args, **kwargs)
+            rollback()
+    return wrapper
 
 class TestBot(unittest.TestCase):
 
@@ -74,6 +81,7 @@ class TestBot(unittest.TestCase):
                 bot.on_event.assert_any_call({})
                 assert bot.on_event.call_count == count
 
+    @isolate_db
     def test_on_event(self):
         send_mock = Mock()
         api_mock = Mock()

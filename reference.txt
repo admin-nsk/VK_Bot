@@ -1,9 +1,9 @@
 certifi==2020.11.8
 chardet==3.0.4
-coverage==5.3
-decorator==4.4.2
 idna==2.10
-requests==2.24.0
+pony==0.7.13
+psycopg2==2.8.6
+requests==2.25.0
 six==1.15.0
-urllib3==1.25.11
+urllib3==1.26.2
 vk-api==11.9.0

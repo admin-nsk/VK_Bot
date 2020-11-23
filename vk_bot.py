@@ -1,9 +1,11 @@
 from random import randint
 import vk_api
+from pony.orm import db_session
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType, VkBotMessageEvent
 import logging
 
 import handlers
+from models import UserState, RegistrationDB
 
 try:
     import settings
@@ -34,12 +36,12 @@ def configure_logging():
     return log
 
 
-class UserState:
-    """State user into scenario"""
-    def __init__(self, scenario_name, step_name, context=None):
-        self.scenario_name = scenario_name
-        self.step_name = step_name
-        self.context = context or {}
+# class UserState:
+#     """State user into scenario"""
+#     def __init__(self, scenario_name, step_name, context=None):
+#         self.scenario_name = scenario_name
+#         self.step_name = step_name
+#         self.context = context or {}
 
 class VkBot:
     """
@@ -64,7 +66,6 @@ class VkBot:
         self.vk = vk_api.VkApi(token=token)
         self.vk_bot_longpoll = VkBotLongPoll(self.vk, group_id)
         self.api = self.vk.get_api()
-        self.user_states = dict()
 
     def run(self):
         """
@@ -79,6 +80,7 @@ class VkBot:
         except Exception as exc:
             log.exception(exc)
 
+    @db_session
     def on_event(self, event):
         """
         Resend input massage
@@ -91,8 +93,10 @@ class VkBot:
             return
         user_id = event.message.from_id
         text = event.message.text
-        if user_id in self.user_states:
-            text_to_send = self.continue_scenario(user_id=user_id, text=text)
+
+        state = UserState.get(user_id=str(user_id))
+        if state is not None:
+            text_to_send = self.continue_scenario(text=text, state=state)
         else:
             for intent in settings.INTENTS:
                 log.debug(f'User get {intent}')
@@ -107,16 +111,15 @@ class VkBot:
 
         self.api.messages.send(user_id=user_id, random_id=randint(1, 2 ** 60), message=text_to_send)
 
-    def start_scenario(self , user_id, scenario_name):
+    def start_scenario(self, user_id, scenario_name):
         scenario = settings.SCENARIOS[scenario_name]
         first_step = scenario['first_step']
         step = scenario['steps'][first_step]
         text_to_send = step['text']
-        self.user_states[user_id] = UserState(scenario_name=scenario_name, step_name=first_step)
+        UserState(user_id=str(user_id), scenario_name=scenario_name, step_name=first_step, context={})
         return text_to_send
 
-    def continue_scenario(self, user_id, text):
-        state = self.user_states[user_id]
+    def continue_scenario(self, text, state):
         steps = settings.SCENARIOS[state.scenario_name]['steps']
 
         step = settings.SCENARIOS[state.scenario_name]['steps'][state.step_name]
@@ -128,7 +131,8 @@ class VkBot:
                 state.step_name = step['next_step']
             else:
                 log.info('Registered: {name}- {email}'.format(**state.context))
-                self.user_states.pop(user_id)
+                RegistrationDB(name=state.context['name'], email=state.context['email'])
+                state.delete()
         else:
             text_to_send = step['failure_text'].format(**state.context)
         return text_to_send
